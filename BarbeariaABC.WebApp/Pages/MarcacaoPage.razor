@@ -1,0 +1,338 @@
+﻿@page "/marcacoes"
+<div class="d-flex justify-content-between align-content-center">
+    <h3>Listagem de Marcações</h3>
+    <Button Color="ButtonColor.Primary" @onclick="OnShowModalClick">Novo</Button>
+</div>
+<hr />
+<!--Toast-->
+<Toasts class="p-3" Messages="messages" AutoHide="true" Delay="6000" Placement="ToastsPlacement.TopRight" />
+<!--End Toast-->
+<!--Grid-->
+@if (Marcacoes is not null)
+{
+    <Grid TItem="Models.Marcacao"
+          Class="table table-hover table-bordered table-striped"
+          DataProvider="MarcacoesDataProvider"
+          AllowFiltering="true"
+          AllowPaging="true"
+          PageSize="5"
+          AllowSorting="true"
+          AllowSelection="true"
+          EmptyText="Sem registos para mostrar"
+          SelectionMode="GridSelectionMode.Multiple"
+          SelectedItemsChanged="OnSelectedItemsChanged"
+          Responsive="true">
+        <GridColumns>
+            <GridColumn TItem="Models.Marcacao" HeaderText="#" PropertyName="Id" SortKeySelector="item => item.Id">
+                @context.Id
+            </GridColumn>
+            <GridColumn TItem="Models.Marcacao" HeaderText="Cliente" PropertyName="Cliente.Nome" SortKeySelector="item => item.Cliente.Nome">
+                @context.Cliente.Nome
+            </GridColumn>
+            <GridColumn TItem="Models.Marcacao" HeaderText="Email" PropertyName="Cliente.Email" SortKeySelector="item => item.Cliente.Email">
+                @context.Cliente.Email
+            </GridColumn>
+            <GridColumn TItem="Models.Marcacao" HeaderText="Telefone" PropertyName="Cliente.Telefone" SortKeySelector="item => item.Cliente.Telefone">
+                @context.Cliente.Telefone
+            </GridColumn>
+            <GridColumn TItem="Models.Marcacao" HeaderText="Serviço" PropertyName="Servico.Descricao" SortKeySelector="item => item.Servico.Descricao">
+                @context.Servico.Descricao
+            </GridColumn>
+            <GridColumn TItem="Models.Marcacao" HeaderText="Funcionário" PropertyName="Funcionario.Nome" SortKeySelector="item => item.Funcionario.Nome">
+                @context.Funcionario.Nome
+            </GridColumn>
+            <GridColumn TItem="Models.Marcacao" HeaderText="Data" PropertyName="Data" SortKeySelector="item => item.Data">
+                @context.Data
+            </GridColumn>
+            <GridColumn TItem="Models.Marcacao" HeaderText="Hora Início" PropertyName="HoraInicio" SortKeySelector="item => item.HoraInicio">
+                @context.HoraInicio
+            </GridColumn>
+            <GridColumn TItem="Models.Marcacao" HeaderText="Hora Fim" PropertyName="HoraFim" SortKeySelector="item => item.HoraFim">
+                @context.HoraFim
+            </GridColumn>
+            <GridColumn TItem="Models.Marcacao" HeaderText="Tipo" PropertyName="TipoMarcacao" SortKeySelector="item => item.TipoMarcacao">
+                @context.TipoMarcacao
+            </GridColumn>
+            <GridColumn TItem="Models.Marcacao" HeaderText="Estado" PropertyName="Status" SortKeySelector="item => item.Status">
+                @context.Status
+            </GridColumn>
+            <GridColumn TItem="Models.Marcacao" HeaderText="Acção" Filterable="false">
+
+                <Dropdown Color="DropdownColor.Secondary">
+                    <DropdownToggleButton>Dropdown button</DropdownToggleButton>
+                    <DropdownMenu>
+                        <DropdownItem To="#" Type="DropdownItemType.Link">Ver</DropdownItem>
+                        <DropdownItem @onclick="(()=> HandleEditarButtonClicked(context.Id))">Editar</DropdownItem>
+                        <DropdownItem To="#" Type="DropdownItemType.Link">Atendimento</DropdownItem>
+                        <DropdownItem @onclick="(()=> HandleDesativarButtonClicked(context.Id))">Desativar</DropdownItem>
+                    </DropdownMenu>
+                </Dropdown>
+
+            </GridColumn>
+        </GridColumns>
+    </Grid>
+}
+<!--End Grid-->
+<!--Modal-->
+
+<Modal @ref="modal" Title="Cadastro de Função">
+    <BodyTemplate>
+
+        <EditForm Model="@Marcacao" OnValidSubmit="HandleOnSubmitEvent">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="form-group mb-3">
+                <label for="cliente" class="control-label text-secondary">Cliente</label>
+                <AutoComplete id="cliente" class="form-control" @bind-Value="clienteMarcacao"
+                              TItem="Models.Cliente"
+                              DataProvider="ClientesDataProvider"
+                              PropertyName="Nome"
+                              Placeholder="Pesquisar por cliente..."
+                              OnChanged="(Models.Cliente cliente) => OnAutoCompleteClienteChanged(cliente)" />
+                @* <ValidationMessage For="@(()=> Marcacao.Cliente.Nome)" /> *@
+            </div>
+            <div class="form-group mb-3">
+                <label for="servico" class="control-label text-secondary">Serviço</label>
+                <AutoComplete id="servico" class="form-control" @bind-Value="servicoMarcacao"
+                              TItem="Models.Servico"
+                              DataProvider="ServicosDataProvider"
+                              PropertyName="Descricao"
+                              Placeholder="Pesquisar por serviço..."
+                              OnChanged="(Models.Servico servico) => OnAutoCompleteServicoChanged(servico)" />
+                @* <ValidationMessage For="@(()=> Marcacao.Cliente.Nome)" /> *@
+            </div>
+            <div class="form-group mb-3">
+                <label for="funcionario" class="control-label text-secondary">Funcionário</label>
+                <AutoComplete id="funcionario" class="form-control" @bind-Value="funcionarioMarcacao"
+                              TItem="Models.Funcionario"
+                              DataProvider="FuncionariosDataProvider"
+                              PropertyName="Nome"
+                              Placeholder="Pesquisar por funcionário..."
+                              OnChanged="(Models.Funcionario funcionario) => OnAutoCompleteFuncionarioChanged(funcionario)" />
+                @* <ValidationMessage For="@(()=> Marcacao.Funcionario.Nome)" /> *@
+            </div>
+            <div class="form-group mb-3">
+                <label for="banco" class="control-label text-secondary">Data</label>
+                <InputDate Type="InputDateType.Date" id="banco" class="form-control" @bind-Value="Marcacao.Data" />
+                <ValidationMessage For="@(()=> Marcacao.Data)" />
+            </div>
+            <div class="form-group mb-3">
+                <label for="sigla" class="control-label text-secondary">Hora</label>
+
+                <InputDate Type="InputDateType.Time" id="sigla" class="form-control" @bind-Value="Marcacao.HoraInicio" />
+                <ValidationMessage For="@(()=> Marcacao.HoraInicio)" />
+            </div> 
+            <Button Color="ButtonColor.Secondary" @onclick="OnHideModalClick">Fechar</Button>
+            <button type="submit" class="btn btn-primary">Salvar</button>
+        </EditForm>
+
+    </BodyTemplate>
+</Modal>
+<!--End Modal-->
+<!--Modal-->
+@* <div class="modal fade" id="marcacaoModal" tabindex="-1" aria-labelledby="marcacaoModal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Cadastro de Marcação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+
+
+            <EditForm Model="@Marcacao" OnValidSubmit="HandleOnSubmitEvent">
+                <div class="modal-body">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <div class="form-group mb-3">
+                        <label for="banco" class="control-label text-secondary">Banco</label>
+                        <InputDate type="date" id="banco" class="form-control" @bind-Value="Marcacao.Data" />
+                        <ValidationMessage For="@(()=> Marcacao.Data)" />
+                    </div>
+                    <div class="form-group mb-3">
+                        <label for="sigla" class="control-label text-secondary">Sigla</label>
+                        <InputDate type="time" id="sigla" class="form-control" @bind-Value="Marcacao.Hora" />
+                        <ValidationMessage For="@(()=> Marcacao.Hora)" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                </div>
+            </EditForm>
+
+
+        </div>
+    </div>
+</div> *@
+@code {
+    [Inject]
+    protected Services.IMarcacaoService MarcacaoService { get; set; }
+    [Inject]
+    protected Services.IClienteService ClienteService { get; set; }
+    [Inject]
+    protected Services.IServicoService ServicoService { get; set; }
+    [Inject]
+    protected Services.IFuncionarioService FuncionarioService { get; set; }
+
+    protected IEnumerable<Models.Marcacao> Marcacoes { get; set; }
+    protected IEnumerable<Models.Cliente> Clientes { get; set; }
+    protected IEnumerable<Models.Servico> Servicos { get; set; }
+    protected IEnumerable<Models.Funcionario> Funcionarios { get; set; }
+    public Models.Marcacao Marcacao { get; set; } = new();
+
+    /*Blazor.Bootstrap props*/
+    private string? clienteMarcacao;
+    private string? servicoMarcacao;
+    private string? funcionarioMarcacao;
+
+    private HashSet<Models.Marcacao> selectedMarcacoes = new();
+    private Modal modal = default!;
+    List<ToastMessage> messages = new List<ToastMessage>();
+    /*Fim Blazor.Bootstrap props*/
+
+    protected override async Task OnInitializedAsync()
+    {
+        Marcacoes = await MarcacaoService.GetAllAsync();
+        Clientes = (await ClienteService.GetAllAsync()).ToList();
+        Servicos = (await ServicoService.GetAllAsync()).ToList();
+        Funcionarios = (await FuncionarioService.GetAllAsync()).ToList();
+    }
+
+    /*Blazor.Bootstrap Methods*/
+    private async Task<GridDataProviderResult<Models.Marcacao>> MarcacoesDataProvider(GridDataProviderRequest<Models.Marcacao> request)
+    {
+        if (Marcacoes == null)
+        {
+            (await MarcacaoService.GetAllAsync()).ToList();
+        }
+
+        return await Task.FromResult(request.ApplyTo(Marcacoes));
+    }
+    /*Autocomplete Cliente*/
+    private async Task<AutoCompleteDataProviderResult<Models.Cliente>> ClientesDataProvider(AutoCompleteDataProviderRequest<Models.Cliente> request)
+    {
+        if (Clientes is null)
+            Clientes = (await ClienteService.GetAllAsync()).ToList(); 
+
+        return await Task.FromResult(request.ApplyTo(Clientes.OrderBy(x => x.Nome)));
+    }
+    private void OnAutoCompleteClienteChanged(Models.Cliente obj)
+    {
+        // TODO: handle your own logic
+        Marcacao.ClienteId = obj?.Id ?? 0;
+        // NOTE: do null check
+        Console.WriteLine($"'{obj?.Nome}' selected.");
+    }
+    /*Fim Autocomplete Cliente*/
+
+    /*Autocomplete Servico*/
+    private async Task<AutoCompleteDataProviderResult<Models.Servico>> ServicosDataProvider(AutoCompleteDataProviderRequest<Models.Servico> request)
+    {
+        if (Servicos is null)
+            Servicos = (await ServicoService.GetAllAsync()).ToList();
+
+        return await Task.FromResult(request.ApplyTo(Servicos.OrderBy(x => x.Descricao)));
+    }
+    private void OnAutoCompleteServicoChanged(Models.Servico obj)
+    {
+        // TODO: handle your own logic
+        Marcacao.ServicoId = obj?.Id ?? 0;
+        // NOTE: do null check
+        Console.WriteLine($"'{obj?.Descricao}' selected.");
+    }
+    /*Fim Autocomplete Servico*/
+
+    /*Autocomplete Funcionario*/
+    private async Task<AutoCompleteDataProviderResult<Models.Funcionario>> FuncionariosDataProvider(AutoCompleteDataProviderRequest<Models.Funcionario> request)
+    {
+        if (Funcionarios is null)
+            Funcionarios = (await FuncionarioService.GetAllAsync()).ToList();
+
+        return await Task.FromResult(request.ApplyTo(Funcionarios.OrderBy(x => x.Nome)));
+    }
+    private void OnAutoCompleteFuncionarioChanged(Models.Funcionario obj)
+    {
+        // TODO: handle your own logic
+        Marcacao.FuncionarioId = obj?.Id ?? 0;
+        // NOTE: do null check
+        Console.WriteLine($"'{obj?.Nome}' selected.");
+    }
+    /*Fim Autocomplete Funcionario*/
+
+
+    private Task OnSelectedItemsChanged(HashSet<Models.Marcacao> obj)
+    {
+        selectedMarcacoes = obj is not null && obj.Any() ? obj : new();
+        return Task.CompletedTask;
+    }
+
+    private async Task OnShowModalClick()
+    {
+        await modal.ShowAsync();
+    }
+
+    private async Task OnHideModalClick()
+    {
+        await modal.HideAsync();
+    }
+    private void ShowMessage(ToastType toastType)
+    {
+        messages.Add(CreateToastMessage(toastType));
+        StateHasChanged();
+    }
+
+    private ToastMessage CreateToastMessage(ToastType toastType)
+    => new ToastMessage
+        {
+            Type = toastType,
+            Message = "Função salva com sucesso",
+        };
+
+    /*Fim Blazor.Bootstrap Methods*/
+
+    protected async void HandleOnSubmitEvent()
+    {
+        if (Marcacao == null)
+        {
+            Marcacao = new();
+            return;
+        }
+
+        var servico = await ServicoService.GetByIdAsync(Marcacao.ServicoId);
+        var duracao = servico != null  ? servico.Duracao : TimeSpan.FromMinutes(45);
+        var horaFim = Marcacao.HoraInicio.Add(duracao);
+
+        Marcacao.HoraFim = horaFim;
+        
+        if (Marcacao.Id == 0)
+        {
+            await MarcacaoService.AddAsync(Marcacao);
+        }
+        else
+        {
+            await MarcacaoService.UpdateAsync(Marcacao);
+        }
+        Marcacao = new();
+        await OnHideModalClick();
+
+        Marcacoes = null;
+        StateHasChanged();
+        Marcacoes = await MarcacaoService.GetAllAsync();
+
+        StateHasChanged();
+        ShowMessage(ToastType.Success);
+    }
+
+    protected async void HandleEditarButtonClicked(int id)
+    {
+        Marcacao = new();
+        Marcacao = await MarcacaoService.GetByIdAsync(id);
+        StateHasChanged();
+        await OnShowModalClick();
+    }
+    protected void HandleDesativarButtonClicked(int id)
+    {
+
+    }
+    
+}

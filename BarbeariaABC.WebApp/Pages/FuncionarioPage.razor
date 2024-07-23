@@ -1,0 +1,188 @@
+﻿@page "/funcionarios"
+<div class="d-flex justify-content-between align-content-center">
+    <h3>Listagem de Funcionários</h3>
+    <Button Color="ButtonColor.Primary" @onclick="OnShowModalClick">Novo</Button>
+</div>
+<hr />
+
+
+<!--Toast-->
+<Toasts class="p-3" Messages="messages" AutoHide="true" Delay="6000" Placement="ToastsPlacement.TopRight" />
+<!--End Toast-->
+
+<!--Grid-->
+@if (Funcionarios is not null)
+{
+    <Grid TItem="Models.Funcionario"
+          Class="table table-hover table-bordered table-striped"
+          DataProvider="FuncionariosDataProvider"
+          AllowFiltering="true"
+          AllowPaging="true"
+          PageSize="5"
+          AllowSorting="true"
+          AllowSelection="true"
+          EmptyText="Sem registos para mostrar"
+          SelectionMode="GridSelectionMode.Multiple"
+          SelectedItemsChanged="OnSelectedItemsChanged"
+          Responsive="true">
+        <GridColumns>
+            <GridColumn TItem="Models.Funcionario" HeaderText="#" PropertyName="Id" SortKeySelector="item => item.Id">
+                @context.Id
+            </GridColumn>
+            <GridColumn TItem="Models.Funcionario" HeaderText="Funcionário" PropertyName="Nome" SortKeySelector="item => item.Nome">
+                @context.Nome
+            </GridColumn>
+            <GridColumn TItem="Models.Funcionario" HeaderText="E-mail" PropertyName="Email" SortKeySelector="item => item.Email">
+                @context.Email
+            </GridColumn>
+            <GridColumn TItem="Models.Funcionario" HeaderText="Telefon" PropertyName="Telefone" SortKeySelector="item => item.Telefone">
+                @context.Telefone
+            </GridColumn>
+            <GridColumn TItem="Models.Funcionario" HeaderText="Estado" PropertyName="IsActivo" SortKeySelector="item => item.IsActivo">
+                @context.IsActivo
+            </GridColumn>
+            <GridColumn TItem="Models.Funcionario" HeaderText="Acção" Filterable="false">
+
+                <Dropdown Color="DropdownColor.Secondary">
+                    <DropdownToggleButton>Dropdown button</DropdownToggleButton>
+                    <DropdownMenu>
+                        <DropdownItem To="#" Type="DropdownItemType.Link">Ver</DropdownItem>
+                        <DropdownItem @onclick="(()=> HandleEditarButtonClicked(context.Id))">Editar</DropdownItem>
+                        <DropdownItem @onclick="(()=> HandleDesativarButtonClicked(context.Id))">Desativar</DropdownItem>
+                    </DropdownMenu>
+                </Dropdown>
+
+            </GridColumn>
+        </GridColumns>
+    </Grid>
+}
+<!--End Grid-->
+<!--Modal-->
+
+<Modal @ref="modal" Title="Cadastro de Funcionário">
+    <BodyTemplate>
+
+        <EditForm Model="@Funcionario" OnValidSubmit="HandleOnSubmitEvent">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="form-group mb-3">
+                <label for="funcionario" class="control-label text-secondary">Funcionário</label>
+                <InputText type="text" id="funcionario" class="form-control" @bind-Value="Funcionario.Nome" />
+                <ValidationMessage For="@(()=> Funcionario.Nome)" />
+            </div>
+            <div class="form-group mb-3">
+                <label for="email" class="control-label text-secondary">E-mail</label>
+                <InputText type="text" id="email" class="form-control" @bind-Value="Funcionario.Email" />
+                <ValidationMessage For="@(()=> Funcionario.Email)" />
+            </div>
+            <div class="form-group mb-3">
+                <label for="telefone" class="control-label text-secondary">Telefone</label>
+                <InputText type="text" id="telefone" class="form-control" @bind-Value="Funcionario.Telefone" />
+                <ValidationMessage For="@(()=> Funcionario.Telefone)" />
+            </div>
+            <Button Color="ButtonColor.Secondary" @onclick="OnHideModalClick">Fechar</Button>
+            <button type="submit" class="btn btn-primary">Salvar</button>
+        </EditForm>
+
+    </BodyTemplate>
+</Modal>
+<!--End Modal-->
+
+@code {
+    [Inject]
+    protected Services.IFuncionarioService FuncionarioService { get; set; }
+    protected IEnumerable<Models.Funcionario> Funcionarios { get; set; }
+    public Models.Funcionario Funcionario { get; set; } = new();
+
+    /*Blazor.Bootstrap props*/
+    private HashSet<Models.Funcionario> selectedFuncionarios = new();
+    private Modal modal = default!;
+    List<ToastMessage> messages = new List<ToastMessage>();
+    /*Fim Blazor.Bootstrap props*/
+
+    protected override async Task OnInitializedAsync()
+    {
+        Funcionarios = await FuncionarioService.GetAllAsync();
+    }
+
+    /*Blazor.Bootstrap Methods*/
+    private async Task<GridDataProviderResult<Models.Funcionario>> FuncionariosDataProvider(GridDataProviderRequest<Models.Funcionario> request)
+    {
+        if (Funcionarios == null)
+        {
+            (await FuncionarioService.GetAllAsync()).ToList();
+        }
+
+        return await Task.FromResult(request.ApplyTo(Funcionarios));
+    }
+
+    private Task OnSelectedItemsChanged(HashSet<Models.Funcionario> obj)
+    {
+        selectedFuncionarios = obj is not null && obj.Any() ? obj : new();
+        return Task.CompletedTask;
+    }
+
+    private async Task OnShowModalClick()
+    {
+        await modal.ShowAsync();
+    }
+
+    private async Task OnHideModalClick()
+    {
+        await modal.HideAsync();
+    }
+    private void ShowMessage(ToastType toastType)
+    {
+        messages.Add(CreateToastMessage(toastType));
+        StateHasChanged();
+    }
+
+    private ToastMessage CreateToastMessage(ToastType toastType)
+    => new ToastMessage
+        {
+            Type = toastType,
+            Message = "Função salva com sucesso",
+        };
+
+    /*Fim Blazor.Bootstrap Methods*/
+
+    protected async void HandleOnSubmitEvent()
+    {
+        if (Funcionario == null)
+        {
+            Funcionario = new();
+            return;
+        }
+
+
+        if (Funcionario.Id == 0)
+        {
+            await FuncionarioService.AddAsync(Funcionario);
+        }
+        else
+        {
+            await FuncionarioService.UpdateAsync(Funcionario);
+        }
+        Funcionario = new();
+        await OnHideModalClick();
+
+        Funcionarios = null;
+        StateHasChanged();
+        Funcionarios = await FuncionarioService.GetAllAsync();
+
+        StateHasChanged();
+        ShowMessage(ToastType.Success);
+    }
+
+    protected async void HandleEditarButtonClicked(int id)
+    {
+        Funcionario = new();
+        Funcionario = await FuncionarioService.GetByIdAsync(id);
+        StateHasChanged();
+        await OnShowModalClick();
+    }
+    protected void HandleDesativarButtonClicked(int id)
+    {
+
+    }
+}

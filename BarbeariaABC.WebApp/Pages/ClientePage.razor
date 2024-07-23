@@ -1,0 +1,187 @@
+﻿@page "/clientes"
+<div class="d-flex justify-content-between align-content-center">
+    <h3>Listagem de Clientes</h3>
+    <Button Color="ButtonColor.Primary" @onclick="OnShowModalClick">Novo</Button>
+</div>
+<hr />
+
+<!--Toast-->
+<Toasts class="p-3" Messages="messages" AutoHide="true" Delay="6000" Placement="ToastsPlacement.TopRight" />
+<!--End Toast-->
+
+<!--Grid-->
+@if (Clientes is not null)
+{
+    <Grid TItem="Models.Cliente"
+          Class="table table-hover table-bordered table-striped"
+          DataProvider="ClientesDataProvider"
+          AllowFiltering="true"
+          AllowPaging="true"
+          PageSize="5"
+          AllowSorting="true"
+          AllowSelection="true"
+          EmptyText="Sem registos para mostrar"
+          SelectionMode="GridSelectionMode.Multiple"
+          SelectedItemsChanged="OnSelectedItemsChanged"
+          Responsive="true">
+        <GridColumns>
+            <GridColumn TItem="Models.Cliente" HeaderText="#" PropertyName="Id" SortKeySelector="item => item.Id">
+                @context.Id
+            </GridColumn>
+            <GridColumn TItem="Models.Cliente" HeaderText="Nome" PropertyName="Cliente" SortKeySelector="item => item.Nome">
+                @context.Nome
+            </GridColumn>
+            <GridColumn TItem="Models.Cliente" HeaderText="E-mail" PropertyName="Email" SortKeySelector="item => item.Email">
+                @context.Email
+            </GridColumn>
+            <GridColumn TItem="Models.Cliente" HeaderText="Telefone" PropertyName="Telefone" SortKeySelector="item => item.Telefone">
+                @context.Telefone
+            </GridColumn>
+            <GridColumn TItem="Models.Cliente" HeaderText="Estado" PropertyName="IsActivo" SortKeySelector="item => item.IsActivo">
+                @context.IsActivo
+            </GridColumn>
+            <GridColumn TItem="Models.Cliente" HeaderText="Acção" Filterable="false">
+
+                <Dropdown Color="DropdownColor.Secondary">
+                    <DropdownToggleButton>Dropdown button</DropdownToggleButton>
+                    <DropdownMenu>
+                        <DropdownItem To="#" Type="DropdownItemType.Link">Ver</DropdownItem>
+                        <DropdownItem @onclick="(()=> HandleEditarButtonClicked(context.Id))">Editar</DropdownItem>
+                        <DropdownItem To="#" Type="DropdownItemType.Link">Marcação</DropdownItem>
+                        <DropdownItem To="#" Type="DropdownItemType.Link">Atendimento</DropdownItem>
+                        <DropdownItem @onclick="(()=> HandleDesativarButtonClicked(context.Id))">Desativar</DropdownItem>
+                    </DropdownMenu>
+                </Dropdown>
+
+            </GridColumn>
+        </GridColumns>
+    </Grid>
+}
+<!--End Grid-->
+<!--Modal-->
+
+<Modal @ref="modal" Title="Cadastro de Cliente">
+    <BodyTemplate>
+
+        <EditForm Model="@Cliente" OnValidSubmit="HandleOnSubmitEvent">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="form-group mb-3">
+                <label for="cliente" class="control-label text-secondary">Cliente</label>
+                <InputText type="text" id="cliente" class="form-control" @bind-Value="Cliente.Nome" />
+                <ValidationMessage For="@(()=> Cliente.Nome)" />
+            </div>
+            <div class="form-group mb-3">
+                <label for="email" class="control-label text-secondary">E-mail</label>
+                <InputText type="text" id="email" class="form-control" @bind-Value="Cliente.Email" />
+                <ValidationMessage For="@(()=> Cliente.Email)" />
+            </div>
+            <div class="form-group mb-3">
+                <label for="telefone" class="control-label text-secondary">Telefone</label>
+                <InputText type="text" id="telefone" class="form-control" @bind-Value="Cliente.Telefone" />
+                <ValidationMessage For="@(()=> Cliente.Telefone)" />
+            </div>
+            <Button Color="ButtonColor.Secondary" @onclick="OnHideModalClick">Fechar</Button>
+            <button type="submit" class="btn btn-primary">Salvar</button>
+        </EditForm>
+
+    </BodyTemplate>
+</Modal>
+<!--End Modal-->
+
+@code {
+    [Inject]
+    protected Services.IClienteService ClienteService { get; set; }
+    protected IEnumerable<Models.Cliente> Clientes { get; set; }
+    public Models.Cliente Cliente { get; set; } = new();
+
+    /*Blazor.Bootstrap props*/
+    private HashSet<Models.Cliente> selectedClientes = new();
+    private Modal modal = default!;
+    List<ToastMessage> messages = new List<ToastMessage>();
+    /*Fim Blazor.Bootstrap props*/
+
+    protected override async Task OnInitializedAsync()
+    {
+        Clientes = await ClienteService.GetAllAsync();
+    }
+
+    /*Blazor.Bootstrap Methods*/
+    private async Task<GridDataProviderResult<Models.Cliente>> ClientesDataProvider(GridDataProviderRequest<Models.Cliente> request)
+    {
+        if (Clientes == null)
+        {
+            (await ClienteService.GetAllAsync()).ToList();
+        }
+
+        return await Task.FromResult(request.ApplyTo(Clientes));
+    }
+
+    private Task OnSelectedItemsChanged(HashSet<Models.Cliente> obj)
+    {
+        selectedClientes = obj is not null && obj.Any() ? obj : new();
+        return Task.CompletedTask;
+    }
+
+    private async Task OnShowModalClick()
+    {
+        await modal.ShowAsync();
+    }
+
+    private async Task OnHideModalClick()
+    {
+        await modal.HideAsync();
+    }
+    private void ShowMessage(ToastType toastType)
+    {
+        messages.Add(CreateToastMessage(toastType));
+        StateHasChanged();
+    }
+
+    private ToastMessage CreateToastMessage(ToastType toastType)
+    => new ToastMessage
+        {
+            Type = toastType,
+            Message = "CLiente salvo com sucesso",
+        };
+
+    /*Fim Blazor.Bootstrap Methods*/
+
+    protected async void HandleOnSubmitEvent()
+    {
+        if (Cliente == null)
+        {
+            Cliente = new();
+            return;
+        }
+
+
+        if (Cliente.Id == 0)
+        {
+            await ClienteService.AddAsync(Cliente);
+        }
+        else
+        {
+            await ClienteService.UpdateAsync(Cliente);
+        }
+        Cliente = new();
+        await OnHideModalClick();
+        Clientes = null;
+        StateHasChanged();
+        Clientes = await ClienteService.GetAllAsync();
+        StateHasChanged();
+        ShowMessage(ToastType.Success);
+    }
+
+    protected async void HandleEditarButtonClicked(int id)
+    {
+        Cliente = new();
+        Cliente = await ClienteService.GetByIdAsync(id);
+        StateHasChanged();
+        await OnShowModalClick();
+    }
+    protected void HandleDesativarButtonClicked(int id)
+    {
+
+    }
+}

@@ -1,0 +1,167 @@
+﻿@page "/atendimentos"
+<div class="d-flex justify-content-between align-content-center">
+    <h3>Listagem de Atendimentos</h3>
+    <Button Color="ButtonColor.Primary" @onclick="OnShowModalClick">Novo</Button>
+</div>
+<hr />
+
+<!--Toast-->
+<Toasts class="p-3" Messages="messages" AutoHide="true" Delay="6000" Placement="ToastsPlacement.TopRight" />
+<!--End Toast-->
+
+<!--Grid-->
+@if (Atendimentos is not null)
+{
+    <Grid TItem="Models.Atendimento"
+          Class="table table-hover table-bordered table-striped"
+          DataProvider="AtendimentosDataProvider"
+          AllowFiltering="true"
+          AllowPaging="true"
+          PageSize="5"
+          AllowSorting="true"
+          AllowSelection="true"
+          EmptyText="Sem registos para mostrar"
+          SelectionMode="GridSelectionMode.Multiple"
+          SelectedItemsChanged="OnSelectedItemsChanged"
+          Responsive="true">
+        <GridColumns>
+            <GridColumn TItem="Models.Atendimento" HeaderText="#" PropertyName="Id" SortKeySelector="item => item.Id">
+                @context.Id
+            </GridColumn>
+            <GridColumn TItem="Models.Atendimento" HeaderText="Cliente" PropertyName="Cliente.Nome" SortKeySelector="item => item.Cliente.Nome">
+                @context.Cliente.Nome
+            </GridColumn>
+            <GridColumn TItem="Models.Atendimento" HeaderText="Funcionário" PropertyName="Funcionario.Nome" SortKeySelector="item => item.Funcionario.Nome">
+                @context.Funcionario.Nome
+            </GridColumn>
+            <GridColumn TItem="Models.Atendimento" HeaderText="Total" PropertyName="Total" SortKeySelector="item => item.Total">
+                @context.Total
+            </GridColumn>
+            <GridColumn TItem="Models.Atendimento" HeaderText="Estado Atendimento" PropertyName="Status" SortKeySelector="item => item.StatusAtendimento">
+                @context.StatusAtendimento
+            </GridColumn>
+            <GridColumn TItem="Models.Atendimento" HeaderText="Acção" Filterable="false">
+
+                <Dropdown Color="DropdownColor.Secondary">
+                    <DropdownToggleButton>Dropdown button</DropdownToggleButton>
+                    <DropdownMenu>
+                        <DropdownItem To="#" Type="DropdownItemType.Link">Ver</DropdownItem>
+                        <DropdownItem @onclick="(()=> HandleEditarButtonClicked(context.Id))">Editar</DropdownItem>
+                        <DropdownItem To="#" Type="DropdownItemType.Link">Atendimento</DropdownItem>
+                        <DropdownItem @onclick="(()=> HandleDesativarButtonClicked(context.Id))">Desativar</DropdownItem>
+                    </DropdownMenu>
+                </Dropdown>
+
+            </GridColumn>
+        </GridColumns>
+    </Grid>
+}
+<!--End Grid-->
+@code {
+    [Inject]
+    public Services.IAtendimentoService AtendimentoService { get; set; } = default!;
+    public List<Models.Atendimento>? Atendimentos { get; set; } = default!;
+    public Models.Atendimento Atendimento { get; set; } = new();
+
+    /*Blazor.Bootstrap props*/
+    private HashSet<Models.Atendimento> selectedAtendimentos = new();
+    private Modal modal = default!;
+    List<ToastMessage> messages = new List<ToastMessage>();
+    /*Fim Blazor.Bootstrap props*/
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Atendimentos = (await AtendimentoService.GetAllAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+
+        }
+    }
+    /*Blazor.Bootstrap Methods*/
+    private async Task<GridDataProviderResult<Models.Atendimento>> AtendimentosDataProvider(GridDataProviderRequest<Models.Atendimento> request)
+    {
+        if (Atendimentos == null)
+        {
+            (await AtendimentoService.GetAllAsync()).ToList();
+        }
+
+        return await Task.FromResult(request.ApplyTo(Atendimentos));
+    }
+
+    private Task OnSelectedItemsChanged(HashSet<Models.Atendimento> obj)
+    {
+        selectedAtendimentos = obj is not null && obj.Any() ? obj : new();
+        return Task.CompletedTask;
+    }
+
+    private async Task OnShowModalClick()
+    {
+        await modal.ShowAsync();
+    }
+
+    private async Task OnHideModalClick()
+    {
+        await modal.HideAsync();
+    }
+    private void ShowMessage(ToastType toastType)
+    {
+        messages.Add(CreateToastMessage(toastType));
+        StateHasChanged();
+    }
+
+    private ToastMessage CreateToastMessage(ToastType toastType)
+    => new ToastMessage
+        {
+            Type = toastType,
+            Message = "Função salva com sucesso",
+        };
+
+    /*Fim Blazor.Bootstrap Methods*/
+
+    protected async void HandleOnSubmitEvent()
+    {
+        if (Atendimento == null)
+        {
+            Atendimento = new();
+            return;
+        }
+
+
+        if (Atendimento.Id == 0)
+        {
+            await AtendimentoService.AddAsync(Atendimento);
+        }
+        else
+        {
+            await AtendimentoService.UpdateAsync(Atendimento);
+        }
+
+
+        Atendimento = new();
+        await OnHideModalClick();
+
+        Atendimentos = null;
+        StateHasChanged();
+        Atendimentos = (await AtendimentoService.GetAllAsync()).ToList();
+        StateHasChanged();
+
+        ShowMessage(ToastType.Success);
+    }
+
+    protected async void HandleEditarButtonClicked(int id)
+    {
+        Console.WriteLine($"Editar clicado para o ID: {id}");
+        Atendimento = new();
+        Atendimento = await AtendimentoService.GetByIdAsync(id);
+        StateHasChanged();
+
+        await OnShowModalClick();
+    }
+    protected void HandleDesativarButtonClicked(int id)
+    {
+
+    }
+}
